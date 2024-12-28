@@ -1,9 +1,11 @@
 use candid::{CandidType, Principal};
-use ic_cdk::api::call::call_with_payment128;
 use ic_cdk::api::management_canister::main::CanisterSettings;
+use ic_cdk::api::{call::call_with_payment128, is_controller};
+use ic_cdk::caller;
 use serde::{Deserialize, Serialize};
 
 const CYCLES_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
+const CYCLES: u128 = 1_000_000_000_000; // 1T cycles.
 
 #[derive(Clone, Eq, PartialEq, Debug, CandidType, Deserialize)]
 pub struct SubnetId {
@@ -14,6 +16,8 @@ pub struct SubnetId {
 pub enum SubnetSelection {
     /// Choose a specific subnet
     Subnet { subnet: SubnetId },
+    // Skip the SubnetFilter on the CMC SubnetSelection for simplification.
+    // https://github.com/dfinity/ic/blob/master/rs/nns/cmc/cmc.did#L35
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, CandidType, Deserialize)]
@@ -23,7 +27,7 @@ struct CreateCanister {
     pub subnet_type: Option<String>,
 }
 
-/// Error for create_canister endpoint
+/// Error for create_canister.
 #[derive(Clone, Eq, PartialEq, Debug, CandidType, Deserialize, Serialize)]
 pub enum CreateCanisterError {
     Refunded {
@@ -34,27 +38,29 @@ pub enum CreateCanisterError {
 
 #[ic_cdk::update]
 async fn create_canister(subnet_id: Principal) -> Result<Principal, CreateCanisterError> {
-    let subnet_selection = SubnetSelection::Subnet {
-        subnet: SubnetId {
-            principal_id: subnet_id.to_text(),
-        },
-    };
+    if subnet_id == Principal::anonymous() {
+        panic!("Cannot use an anonymous subnet id.");
+    }
+
+    if !is_controller(&caller()) {
+        panic!("Only the controllers can call 'create_canister' function.");
+    }
 
     let arg = CreateCanister {
         settings: None,
         subnet_type: None,
-        subnet_selection: Some(subnet_selection),
+        subnet_selection: Some(SubnetSelection::Subnet {
+            subnet: SubnetId {
+                principal_id: subnet_id.to_text(),
+            },
+        }),
     };
 
-    let cycles: u128 = 3_000_000_000_000; // 3T cycles.
-
-    let canister_id = Principal::from_text(CYCLES_MINTING_CANISTER).unwrap();
-
     call_with_payment128::<(CreateCanister,), (Result<Principal, CreateCanisterError>,)>(
-        canister_id,
+        Principal::from_text(CYCLES_MINTING_CANISTER).unwrap(),
         "create_canister",
         (arg,),
-        cycles,
+        CYCLES,
     )
     .await
     .unwrap()
