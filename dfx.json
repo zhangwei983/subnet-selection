@@ -1,0 +1,17 @@
+{
+  "canisters": {
+    "subnet_backend": {
+      "candid": "src/subnet_backend/subnet_backend.did",
+      "package": "subnet_backend",
+      "type": "rust"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

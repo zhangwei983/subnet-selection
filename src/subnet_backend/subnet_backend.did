@@ -1,0 +1,5 @@
+type CreateCanisterError = variant {
+  Refunded : record { create_error : text; refund_amount : nat };
+};
+type Result = variant { Ok : principal; Err : CreateCanisterError };
+service : { create_canister : (principal) -> (Result) }
