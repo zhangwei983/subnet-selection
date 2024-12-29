@@ -1,7 +1,7 @@
 use candid::{CandidType, Principal};
 use ic_cdk::api::management_canister::main::CanisterSettings;
 use ic_cdk::api::{call::call_with_payment128, is_controller};
-use ic_cdk::caller;
+use ic_cdk::{caller, id};
 use serde::{Deserialize, Serialize};
 
 const CYCLES_MINTING_CANISTER: &str = "rkp4c-7iaaa-aaaaa-aaaca-cai";
@@ -47,7 +47,15 @@ async fn create_canister(subnet_id: Principal) -> Result<Principal, CreateCanist
     }
 
     let arg = CreateCanister {
-        settings: None,
+        settings: Some(CanisterSettings {
+            controllers: Some(vec![caller(), id()]),
+            compute_allocation: None,
+            memory_allocation: None,
+            freezing_threshold: None,
+            reserved_cycles_limit: None,
+            log_visibility: None,
+            wasm_memory_limit: None,
+        }),
         subnet_type: None,
         subnet_selection: Some(SubnetSelection::Subnet {
             subnet: SubnetId {
